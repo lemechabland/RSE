@@ -1,0 +1,22 @@
+[project]
+name = "ghg-manager"
+version = "0.1.0"
+description = "A GUI application for managing greenhouse gas emissions, computing CO2e totals and scope breakdowns."
+authors = [ { name = "GHG Manager" } ]
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Framework :: Qt",
+]
+
+[project.dependencies]
+PySide6 = "^6.7"
+matplotlib = "^3.8"
+pandas = "^2.0"
+
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
