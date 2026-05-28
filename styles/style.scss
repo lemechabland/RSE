@@ -1,0 +1,89 @@
+QMainWindow {
+  background: $surface;
+  color: $text;
+  font-family: $font-family;
+  font-size: $font-size;
+}
+
+QMenuBar {
+  background: $surface;
+  color: $text;
+}
+
+QMenuBar::item:selected {
+  background: $accent-strong;
+  color: white;
+}
+
+QMenu {
+  background: $surface;
+  color: $text;
+}
+
+QMenu::item:selected {
+  background: $accent-strong;
+  color: white;
+}
+
+QToolBar {
+  background: $surface;
+  border-bottom: 1px solid $border;
+}
+
+QStatusBar {
+  background: $surface-strong;
+  color: $text-muted;
+}
+
+QTabWidget::pane {
+  border: 1px solid $border;
+  background: $surface-strong;
+}
+
+QTabBar::tab:selected {
+  background: $accent;
+  color: #ffffff;
+  border-radius: 4px;
+}
+
+QTabBar::tab:!selected {
+  background: $surface;
+  color: $text;
+}
+
+QLabel,
+QLineEdit,
+QTextEdit,
+QComboBox,
+QSpinBox,
+QDoubleSpinBox {
+  color: $text;
+  font-family: $font-family;
+}
+
+QLineEdit,
+QTextEdit,
+QComboBox,
+QSpinBox,
+QDoubleSpinBox {
+  background: white;
+  border: 1px solid $border;
+  border-radius: $button-radius;
+  padding: 6px;
+}
+
+QPushButton {
+  background: $accent;
+  color: white;
+  border-radius: $button-radius;
+  padding: 8px 14px;
+  border: none;
+}
+
+QPushButton:hover {
+  background: $accent-strong;
+}
+
+QLabel#preview_label {
+  color: $text-muted;
+}

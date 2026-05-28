@@ -7,17 +7,19 @@ from typing import Dict, Optional
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from .forms import ActivityForm, CompanyForm, EmissionFactorForm, SettingsForm
+from .style_loader import apply_app_style
+from .ui_builder import load_ui_module
 from .widgets import ChartPanel, SummaryPanel
 from ..models.activity import Activity
 from ..models.company import Company
@@ -31,6 +33,11 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
+        ui_module = load_ui_module(Path(__file__).resolve().with_name("main_window.ui"))
+        self.ui = ui_module.Ui_MainWindow()
+        self.ui.setupUi(self)
+
         self.setWindowTitle("GHG Manager")
         self.setMinimumSize(1100, 780)
 
@@ -56,47 +63,33 @@ class MainWindow(QMainWindow):
         self._create_toolbar()
         self.statusBar().showMessage("Ready")
 
-        tabs = QTabWidget()
-        tabs.addTab(self._build_general_tab(), "General Information")
-        tabs.addTab(self._build_factors_tab(), "Emission Factors")
-        tabs.addTab(self._build_activities_tab(), "Data Activities")
-        tabs.addTab(self._build_settings_tab(), "Settings")
-        tabs.addTab(self._build_dashboard_tab(), "Dashboard")
-        self.central_widget = QWidget()
-        layout = QVBoxLayout(self.central_widget)
-        layout.addWidget(tabs)
-        self.setCentralWidget(self.central_widget)
-        self._apply_styles()
+        self.ui.tabWidget.addTab(self._build_general_tab(), "General Information")
+        self.ui.tabWidget.addTab(self._build_factors_tab(), "Emission Factors")
+        self.ui.tabWidget.addTab(self._build_activities_tab(), "Data Activities")
+        self.ui.tabWidget.addTab(self._build_settings_tab(), "Settings")
+        self.ui.tabWidget.addTab(self._build_dashboard_tab(), "Dashboard")
+        self.ui.tabWidget.tabBar().hide()
+        apply_app_style(self)
 
     def _create_menu(self) -> None:
         file_menu = self.menuBar().addMenu("File")
         file_menu.addAction(QAction("Load saved data", self, triggered=self._load_saved_data))
         file_menu.addAction(QAction("Save data", self, triggered=self.save_data))
+        file_menu.addAction(QAction("Export report", self, triggered=self.export_report))
         file_menu.addSeparator()
         file_menu.addAction(QAction("Exit", self, triggered=self.close))
+
+        self.menuBar().addAction(QAction("General Information", self, triggered=lambda: self.ui.tabWidget.setCurrentIndex(0)))
+        self.menuBar().addAction(QAction("Emission Factor", self, triggered=lambda: self.ui.tabWidget.setCurrentIndex(1)))
+        self.menuBar().addAction(QAction("Data Activities", self, triggered=lambda: self.ui.tabWidget.setCurrentIndex(2)))
+        self.menuBar().addAction(QAction("Settings", self, triggered=lambda: self.ui.tabWidget.setCurrentIndex(3)))
+        self.menuBar().addAction(QAction("Dashboard", self, triggered=lambda: self.ui.tabWidget.setCurrentIndex(4)))
 
         help_menu = self.menuBar().addMenu("Help")
         help_menu.addAction(QAction("About", self, triggered=self._show_about))
 
     def _create_toolbar(self) -> None:
-        toolbar = self.addToolBar("Actions")
-        toolbar.setMovable(False)
-
-        compute_action = QAction("Compute totals", self)
-        compute_action.triggered.connect(self.compute_totals)
-        toolbar.addAction(compute_action)
-
-        save_action = QAction("Save data", self)
-        save_action.triggered.connect(self.save_data)
-        toolbar.addAction(save_action)
-
-        export_action = QAction("Export report", self)
-        export_action.triggered.connect(self.export_report)
-        toolbar.addAction(export_action)
-
-        load_action = QAction("Load saved data", self)
-        load_action.triggered.connect(self._load_saved_data)
-        toolbar.addAction(load_action)
+        pass
 
     def _build_general_tab(self) -> QWidget:
         tab = QWidget()
@@ -162,9 +155,26 @@ class MainWindow(QMainWindow):
     def _build_dashboard_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.addWidget(QLabel("<h3>Dashboard</h3>"))
-        layout.addWidget(self.summary_panel)
-        layout.addWidget(self.chart_panel)
+
+        header = QHBoxLayout()
+        header.addWidget(QLabel("<h3>Dashboard</h3>"))
+        header.addStretch()
+        compute_button = QPushButton("Compute emission")
+        compute_button.setFixedHeight(42)
+        compute_button.clicked.connect(self.compute_emission)
+        header.addWidget(compute_button)
+
+        summary_box = QGroupBox("Summary")
+        summary_layout = QVBoxLayout(summary_box)
+        summary_layout.addWidget(self.summary_panel)
+
+        chart_box = QGroupBox("Scope distribution")
+        chart_layout = QVBoxLayout(chart_box)
+        chart_layout.addWidget(self.chart_panel)
+
+        layout.addLayout(header)
+        layout.addWidget(summary_box)
+        layout.addWidget(chart_box)
         layout.addStretch()
         return tab
 
@@ -176,14 +186,11 @@ class MainWindow(QMainWindow):
         )
 
     def _apply_styles(self) -> None:
-        self.setStyleSheet(
-            "QMainWindow { background: #f4f6f8; }"
-            "QLabel { font-size: 13px; }"
-            "QTabWidget::pane { border: 1px solid #d5d5d5; background: white; }"
-            "QToolBar { border-bottom: 1px solid #d5d5d5; background: #ffffff; }"
-        )
+        style_path = Path(__file__).resolve().parent / "style.qss"
+        if style_path.exists():
+            self.setStyleSheet(style_path.read_text(encoding="utf-8"))
 
-    def compute_totals(self) -> None:
+    def compute_emission(self) -> None:
         try:
             self.company = self.company_form.company()
         except Exception as error:

@@ -52,6 +52,18 @@ python -m ghg_manager.app
 
 Use the toolbar to compute totals, save data, and export report summaries.
 
+## Building UI and styles
+
+The project now includes Qt Designer `.ui` assets and a style pipeline driven by JSON theme values, SCSS, and generated QSS.
+
+To regenerate the Python UI modules and the application stylesheet:
+
+```bash
+python scripts/build_assets.py
+```
+
+This will rebuild `ghg_manager/ui/generated/` and `ghg_manager/ui/style.qss` from `ghg_manager/ui/*.ui`, `styles/style.scss`, and `styles/theme.json`.
+
 ## Sample templates
 
 There are sample import templates under `templates/`:

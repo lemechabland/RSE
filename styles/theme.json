@@ -1,0 +1,15 @@
+{
+  "base": "#1f2937",
+  "surface": "#f8fafc",
+  "surface-strong": "#e2e8f0",
+  "accent": "#22c55e",
+  "accent-strong": "#16a34a",
+  "text": "#111827",
+  "text-muted": "#475569",
+  "border": "#cbd5e1",
+  "danger": "#ef4444",
+  "success": "#22c55e",
+  "button-radius": "8px",
+  "font-family": "Segoe UI, Arial, sans-serif",
+  "font-size": "13px"
+}

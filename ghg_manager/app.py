@@ -10,15 +10,18 @@ if __package__ is None and __name__ == "__main__":
 
 try:
     from .ui.main_window import MainWindow
+    from .ui.style_loader import apply_app_style
     from .utils.logging import configure_logging
 except ImportError:
     from ghg_manager.ui.main_window import MainWindow
+    from ghg_manager.ui.style_loader import apply_app_style
     from ghg_manager.utils.logging import configure_logging
 
 
 def main() -> int:
     configure_logging()
     app = QApplication(sys.argv)
+    apply_app_style(app)
     window = MainWindow()
     window.show()
     return app.exec()

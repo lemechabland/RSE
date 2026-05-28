@@ -266,6 +266,8 @@ class CategoryActivityPanel(QWidget):
         self.activity_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.activity_table.verticalHeader().setVisible(False)
         self.activity_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.activity_table.setAlternatingRowColors(True)
+        self.activity_table.setShowGrid(False)
 
         self.activity_name = QLineEdit()
         self.activity_type = QLineEdit()
@@ -277,23 +279,14 @@ class CategoryActivityPanel(QWidget):
         self.activity_scope = QComboBox()
         self.activity_scope.addItems(SCOPE_OPTIONS)
 
-        self.map_name = QComboBox()
-        self.map_type = QComboBox()
-        self.map_amount = QComboBox()
-        self.map_unit = QComboBox()
-        self.map_factor_key = QComboBox()
-        self.map_scope = QComboBox()
-        self._initialize_mapping_dropdowns()
-
         self.load_button = QPushButton("Import activities from file")
-        self.import_button = QPushButton("Add mapped rows")
         self.add_button = QPushButton("Add activity")
         self.remove_button = QPushButton("Remove selected")
 
         self.loaded_file_label = QLabel("No activity file loaded")
+        self.loaded_file_label.setStyleSheet("color: #5a5f66; margin-top: 4px;")
 
         self.load_button.clicked.connect(self.load_activity_file)
-        self.import_button.clicked.connect(self.import_mapped_rows)
         self.add_button.clicked.connect(self.add_activity)
         self.remove_button.clicked.connect(self.remove_selected)
 
@@ -305,17 +298,8 @@ class CategoryActivityPanel(QWidget):
         input_layout.addRow("Emission factor key:", self.activity_factor_key)
         input_layout.addRow("Scope:", self.activity_scope)
 
-        mapping_layout = QFormLayout()
-        mapping_layout.addRow("Map name column:", self.map_name)
-        mapping_layout.addRow("Map type column:", self.map_type)
-        mapping_layout.addRow("Map amount column:", self.map_amount)
-        mapping_layout.addRow("Map unit column:", self.map_unit)
-        mapping_layout.addRow("Map factor key column:", self.map_factor_key)
-        mapping_layout.addRow("Map scope column:", self.map_scope)
-
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.load_button)
-        button_layout.addWidget(self.import_button)
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.remove_button)
         button_layout.addStretch()
@@ -323,38 +307,13 @@ class CategoryActivityPanel(QWidget):
         form_layout = QVBoxLayout()
         form_layout.addWidget(QLabel(f"<b>{self.category}</b>"))
         form_layout.addLayout(input_layout)
-        form_layout.addWidget(QLabel("Activity column mapping"))
-        form_layout.addLayout(mapping_layout)
-        form_layout.addWidget(self.loaded_file_label)
         form_layout.addLayout(button_layout)
+        form_layout.addWidget(self.loaded_file_label)
         form_layout.addWidget(self.activity_table)
         self.setLayout(form_layout)
 
         self.loaded_data: Optional[pd.DataFrame] = None
 
-    def _initialize_mapping_dropdowns(self) -> None:
-        for dropdown in [
-            self.map_name,
-            self.map_type,
-            self.map_amount,
-            self.map_unit,
-            self.map_factor_key,
-            self.map_scope,
-        ]:
-            dropdown.clear()
-            dropdown.addItem("-- select column --")
-
-    def _populate_mapping_options(self, columns: list[str]) -> None:
-        for dropdown in [
-            self.map_name,
-            self.map_type,
-            self.map_amount,
-            self.map_unit,
-            self.map_factor_key,
-            self.map_scope,
-        ]:
-            dropdown.clear()
-            dropdown.addItems(["-- select column --"] + columns)
 
     def load_activity_file(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
@@ -372,35 +331,25 @@ class CategoryActivityPanel(QWidget):
             QMessageBox.warning(self, "Import error", f"Unable to import file: {error}")
             return
 
-        columns = normalize_columns(self.loaded_data)
-        self._populate_mapping_options(columns)
-        self.loaded_file_label.setText(f"Loaded {Path(file_path).name} ({len(self.loaded_data)} rows)")
-
-    def import_mapped_rows(self) -> None:
-        if self.loaded_data is None:
-            QMessageBox.warning(self, "No file", "Please import an activity file first.")
-            return
-
-        mapping = {
-            "name": self.map_name.currentText(),
-            "type": self.map_type.currentText(),
-            "amount": self.map_amount.currentText(),
-            "unit": self.map_unit.currentText(),
-            "factor_key": self.map_factor_key.currentText(),
-            "scope": self.map_scope.currentText(),
-        }
-        if any(value.startswith("-- select") for value in mapping.values()):
-            QMessageBox.warning(self, "Incomplete mapping", "Please map every activity field before importing.")
+        required_columns = {"name", "type", "amount", "unit", "factor_key", "scope"}
+        columns = {str(col).strip().lower(): col for col in self.loaded_data.columns}
+        if not required_columns.issubset(columns):
+            QMessageBox.warning(
+                self,
+                "Invalid file",
+                "The import file must include columns: name, type, amount, unit, factor_key, scope",
+            )
+            self.loaded_data = None
             return
 
         for _, row in self.loaded_data.iterrows():
             values = [
-                str(row.get(mapping["name"], "")).strip(),
-                str(row.get(mapping["type"], "")).strip(),
-                f"{float(row.get(mapping['amount'], 0) or 0):.3f}",
-                str(row.get(mapping["unit"], "")).strip(),
-                str(row.get(mapping["factor_key"], "")).strip(),
-                str(row.get(mapping["scope"], "scope_1")).strip(),
+                str(row.get(columns["name"], "")).strip(),
+                str(row.get(columns["type"], "")).strip(),
+                f"{float(row.get(columns['amount'], 0) or 0):.3f}",
+                str(row.get(columns["unit"], "")).strip(),
+                str(row.get(columns["factor_key"], "")).strip(),
+                str(row.get(columns["scope"], "scope_1")).strip(),
             ]
             row_index = self.activity_table.rowCount()
             self.activity_table.insertRow(row_index)
@@ -411,7 +360,6 @@ class CategoryActivityPanel(QWidget):
 
         self.loaded_file_label.setText(f"Imported {len(self.loaded_data)} rows")
         self.loaded_data = None
-        self._initialize_mapping_dropdowns()
 
     def add_activity(self) -> None:
         name = self.activity_name.text().strip()
