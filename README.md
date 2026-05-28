@@ -25,9 +25,38 @@ This architecture supports:
 - a UI layer decoupled from business logic
 - testable components for validation and computation
 
-## Next steps
+## Completed features
 
-- implement data entry forms for company, activity, and emission factor data
-- connect the calculator service to the UI
-- add real charts and reporting export options
-- build sample datasets and import templates
+- a polished five-tab interface: General Information, Emission Factors, Data Activities, Settings, Dashboard
+- menu bar and toolbar for quick actions
+- report settings and export targets in Settings
+- emission factor import from Excel/CSV and interactive factor browsing
+- activity import from Excel/CSV with column mapping
+- scope 1/2/3 CO2e computation pipeline
+- interactive dashboard with styled summary cards and a scope chart
+- JSON persistence for saved GHG data
+
+## Run the application
+
+Install dependencies:
+
+```bash
+python -m pip install PySide6 matplotlib pandas openpyxl
+```
+
+Start the GUI:
+
+```bash
+python -m ghg_manager.app
+```
+
+Use the toolbar to compute totals, save data, and export report summaries.
+
+## Sample templates
+
+There are sample import templates under `templates/`:
+
+- `templates/emission_factors_template.xlsx`
+- `templates/activity_data_template.xlsx`
+
+Use these files to import emission factors and activity data via the Emission Factors and Data Activities tabs.

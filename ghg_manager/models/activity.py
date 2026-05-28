@@ -12,4 +12,5 @@ class Activity:
     unit: str
     emission_factor_key: str
     scope: str
+    category: Optional[str] = None
     notes: Optional[str] = None

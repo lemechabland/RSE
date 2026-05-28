@@ -10,4 +10,5 @@ class Company:
     industry: str
     location: Optional[str] = None
     fiscal_year: Optional[str] = None
+    capital_amount: Optional[float] = None
     notes: Optional[str] = None
