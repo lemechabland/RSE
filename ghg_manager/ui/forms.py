@@ -98,7 +98,9 @@ class EmissionFactorForm(QGroupBox):
         self.factor_year.setPlaceholderText("2024 (optional)")
 
         self.add_button = QPushButton("Add factor")
+        self.add_button.setProperty("variant", "primary")
         self.remove_button = QPushButton("Remove selected")
+        self.remove_button.setProperty("variant", "danger")
         self.load_button = QPushButton("Import factors from file")
         self.load_button.clicked.connect(self.import_factors)
         self.add_button.clicked.connect(self.add_factor)
@@ -279,10 +281,12 @@ class CategoryActivityPanel(QWidget):
 
         self.load_button = QPushButton("Import activities from file")
         self.add_button = QPushButton("Add activity")
+        self.add_button.setProperty("variant", "primary")
         self.remove_button = QPushButton("Remove selected")
+        self.remove_button.setProperty("variant", "danger")
 
         self.loaded_file_label = QLabel("No activity file loaded")
-        self.loaded_file_label.setStyleSheet("color: #5a5f66; margin-top: 4px;")
+        self.loaded_file_label.setProperty("role", "hint")
 
         self.load_button.clicked.connect(self.load_activity_file)
         self.add_button.clicked.connect(self.add_activity)
@@ -483,10 +487,10 @@ class SettingsForm(QGroupBox):
 
         self.preview_label = QLabel("")
         self.preview_label.setWordWrap(True)
-        self.preview_label.setStyleSheet("color: #333333; padding: 6px; background: #f2f4f7; border: 1px solid #d7d7d7; border-radius: 6px;")
+        self.preview_label.setProperty("role", "preview")
 
         self.folder_warning_label = QLabel("")
-        self.folder_warning_label.setStyleSheet("color: #b00020; font-weight: bold;")
+        self.folder_warning_label.setProperty("role", "warning")
 
         form_layout = QFormLayout()
         form_layout.addRow("Report name:", self.report_name)

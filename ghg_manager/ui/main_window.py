@@ -198,6 +198,7 @@ class MainWindow(QMainWindow):
         header.addWidget(QLabel("<h3>Dashboard</h3>"))
         header.addStretch()
         compute_button = QPushButton("Compute emission")
+        compute_button.setProperty("variant", "primary")
         compute_button.setFixedHeight(42)
         compute_button.clicked.connect(self.compute_emission)
         header.addWidget(compute_button)

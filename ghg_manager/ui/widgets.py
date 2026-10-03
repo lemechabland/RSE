@@ -58,14 +58,14 @@ class SummaryPanel(QGroupBox):
         ]:
             label.setWordWrap(True)
 
-        self.total_title.setStyleSheet("font-weight: bold; font-size: 14px;")
-        self.scope_1_title.setStyleSheet("font-weight: bold;")
-        self.scope_2_title.setStyleSheet("font-weight: bold;")
-        self.scope_3_title.setStyleSheet("font-weight: bold;")
-        self.total_label.setStyleSheet("font-size: 22px; color: #2a6f97;")
-        self.scope_1_label.setStyleSheet("font-size: 16px;")
-        self.scope_2_label.setStyleSheet("font-size: 16px;")
-        self.scope_3_label.setStyleSheet("font-size: 16px;")
+        self.total_title.setProperty("role", "summary-title")
+        self.scope_1_title.setProperty("role", "summary-subtitle")
+        self.scope_2_title.setProperty("role", "summary-subtitle")
+        self.scope_3_title.setProperty("role", "summary-subtitle")
+        self.total_label.setProperty("role", "summary-total")
+        self.scope_1_label.setProperty("role", "summary-value")
+        self.scope_2_label.setProperty("role", "summary-value")
+        self.scope_3_label.setProperty("role", "summary-value")
 
         grid = QGridLayout()
         grid.addWidget(self.total_title, 0, 0)
