@@ -1,8 +1,21 @@
 """Activity and company operations models."""
 
 from dataclasses import dataclass
-from typing import Optional
 
+@dataclass(frozen=True, slots=True)
+class ActivityData:
+    """A measured level of activity that produces emissions."""
+ 
+    value: float
+    unit: str
+    label: str = ""
+ 
+    def __post_init__(self) -> None:
+        if self.value < 0:
+            raise ValueError("Activity data cannot be negative.")
+
+        
+from typing import Optional
 
 @dataclass
 class Activity:

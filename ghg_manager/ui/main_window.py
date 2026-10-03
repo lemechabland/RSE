@@ -4,15 +4,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QPixmap
 from PySide6.QtWidgets import (
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -20,12 +21,25 @@ from PySide6.QtWidgets import (
 from .forms import ActivityForm, CompanyForm, EmissionFactorForm, SettingsForm
 from .style_loader import apply_app_style
 from .ui_builder import load_ui_module
-from .widgets import ChartPanel, SummaryPanel
-from ..models.activity import Activity
+from .widgets import BannerLabel, ChartPanel, SummaryPanel
+from ..models.activity import Activity, ActivityData
 from ..models.company import Company
-from ..models.emission_factor import EmissionFactor
+from ..models.emission import DataQuality, EmissionFactor, EmissionFactorProvider, Scope
+from ..models.report import GHGInventory
 from ..services.calculator import GHGCalculator
 from ..services.data_store import DataStore
+from ..utils.units import kg_to_tonnes
+
+
+class _DictFactorProvider(EmissionFactorProvider):
+    """Adapts the plain ``{key: EmissionFactor}`` dict built by the forms to
+    the :class:`EmissionFactorProvider` interface the calculator expects."""
+
+    def __init__(self, factors: Dict[str, EmissionFactor]) -> None:
+        self._factors = factors
+
+    def get(self, key: str) -> EmissionFactor:
+        return self._factors[key]
 
 
 class MainWindow(QMainWindow):
@@ -42,7 +56,6 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1100, 780)
 
         self.data_store = DataStore()
-        self.calculator = GHGCalculator()
         self.company: Optional[Company] = None
         self.emission_factors: Dict[str, EmissionFactor] = {}
         self.activities: list[Activity] = []
@@ -93,7 +106,30 @@ class MainWindow(QMainWindow):
 
     def _build_general_tab(self) -> QWidget:
         tab = QWidget()
-        layout = QVBoxLayout(tab)
+        outer = QVBoxLayout(tab)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.viewport().setStyleSheet("background: transparent;")
+
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(18)
+
+        banner_path = Path(__file__).resolve().parent.parent / "assets" / "Background.png"
+        if banner_path.exists():
+            banner = BannerLabel(QPixmap(str(banner_path)))
+            layout.addWidget(banner)
+
+        body = QVBoxLayout()
+        body.setContentsMargins(16, 0, 16, 16)
+        body.setSpacing(14)
+
         intro = QLabel(
             "<h2>Welcome to GHG Manager</h2>"
             "<p>Use the tabs to provide company information, manage emission factors, import activity data, and review the dashboard.</p>"
@@ -101,16 +137,18 @@ class MainWindow(QMainWindow):
         intro.setWordWrap(True)
         intro.setMargin(8)
         self.validate_company_button = QPushButton("Validate and save company information")
-        self.validate_company_button.setStyleSheet(
-            "QPushButton { background-color: #27ae60; color: white; border-radius: 6px; padding: 8px 14px; }"
-            "QPushButton:hover { background-color: #2ecc71; }"
-        )
+        self.validate_company_button.setProperty("variant", "primary")
         self.validate_company_button.clicked.connect(self.save_company_info)
 
-        layout.addWidget(intro)
-        layout.addWidget(self.company_form)
-        layout.addWidget(self.validate_company_button)
+        body.addWidget(intro)
+        body.addWidget(self.company_form)
+        body.addWidget(self.validate_company_button)
+
+        layout.addLayout(body)
         layout.addStretch()
+
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
         return tab
 
     def _build_factors_tab(self) -> QWidget:
@@ -216,8 +254,53 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Missing company", "Please fill in the company name before computing totals.")
             return
 
-        totals = self.calculator.compute_report(self.activities, self.emission_factors)
+        try:
+            reporting_year = int(self.company.fiscal_year) if self.company.fiscal_year else datetime.utcnow().year
+        except ValueError:
+            reporting_year = datetime.utcnow().year
+
+        provider = _DictFactorProvider(self.emission_factors)
+        inventory = GHGInventory(reporting_entity=self.company.name, reporting_year=reporting_year)
+        calculators: Dict[Scope, GHGCalculator] = {}
+        skipped: list[str] = []
+
+        for activity in self.activities:
+            if not activity.emission_factor_key:
+                continue
+            try:
+                scope = Scope[activity.scope.upper()]
+            except KeyError:
+                skipped.append(f"{activity.name}: unknown scope {activity.scope!r}")
+                continue
+
+            calculator = calculators.setdefault(scope, GHGCalculator(scope=scope, factors=provider))
+            try:
+                result = calculator.compute_activity_emissions(
+                    activity.emission_factor_key,
+                    ActivityData(value=activity.amount, unit=activity.unit, label=activity.name),
+                    {
+                        "category": activity.category or activity.activity_type,
+                        "method": activity.activity_type or "unknown",
+                        "data_quality": DataQuality.PRIMARY,
+                    },
+                )
+            except ValueError as error:
+                skipped.append(f"{activity.name}: {error}")
+                continue
+            inventory.add(result)
+
+        if skipped:
+            QMessageBox.warning(self, "Some activities were skipped", "\n".join(skipped))
+
+        by_scope = inventory.by_scope_kg()
+        totals = {
+            "total_co2e": inventory.total_tonnes(),
+            "scope_1": kg_to_tonnes(by_scope.get(Scope.SCOPE_1, 0.0)),
+            "scope_2": kg_to_tonnes(by_scope.get(Scope.SCOPE_2, 0.0)),
+            "scope_3": kg_to_tonnes(by_scope.get(Scope.SCOPE_3, 0.0)),
+        }
         self.last_totals = totals
+        self.inventory = inventory
         self.summary_panel.update_summary(totals)
         self.chart_panel.plot_scope(totals)
         self.statusBar().showMessage("Computation completed", 5000)
@@ -287,7 +370,7 @@ class MainWindow(QMainWindow):
                     "source": factor.source,
                     "value": factor.value,
                     "unit": factor.unit,
-                    "scope": factor.scope,
+                    "year": factor.year,
                 }
                 for key, factor in self.factor_form.factors().items()
             ],
@@ -347,7 +430,7 @@ class MainWindow(QMainWindow):
                 source=item.get("source", ""),
                 value=float(item.get("value", 0)),
                 unit=item.get("unit", ""),
-                scope=item.get("scope", "scope_1"),
+                year=item.get("year"),
             )
         self.factor_form.set_factors(factors)
         if not factors:

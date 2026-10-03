@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -28,7 +27,7 @@ from PySide6.QtCore import Qt
 
 from ..models.activity import Activity
 from ..models.company import Company
-from ..models.emission_factor import EmissionFactor
+from ..models.emission import EmissionFactor
 from ..utils.excel_io import load_table, normalize_columns
 
 
@@ -81,7 +80,7 @@ class EmissionFactorForm(QGroupBox):
         super().__init__("Emission Factors", parent)
         self.factor_table = QTableWidget(0, 6)
         self.factor_table.setHorizontalHeaderLabels(
-            ["Key", "Category", "Source", "Value", "Unit", "Scope"]
+            ["Key", "Category", "Source", "Value", "Unit", "Year"]
         )
         self.factor_table.horizontalHeader().setStretchLastSection(True)
         self.factor_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -95,8 +94,8 @@ class EmissionFactorForm(QGroupBox):
         self.factor_value.setRange(0, 1e9)
         self.factor_value.setDecimals(6)
         self.factor_unit = QLineEdit()
-        self.factor_scope = QComboBox()
-        self.factor_scope.addItems(SCOPE_OPTIONS)
+        self.factor_year = QLineEdit()
+        self.factor_year.setPlaceholderText("2024 (optional)")
 
         self.add_button = QPushButton("Add factor")
         self.remove_button = QPushButton("Remove selected")
@@ -111,7 +110,7 @@ class EmissionFactorForm(QGroupBox):
         input_layout.addRow("Source:", self.factor_source)
         input_layout.addRow("Value:", self.factor_value)
         input_layout.addRow("Unit:", self.factor_unit)
-        input_layout.addRow("Scope:", self.factor_scope)
+        input_layout.addRow("Year:", self.factor_year)
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.load_button)
@@ -157,7 +156,7 @@ class EmissionFactorForm(QGroupBox):
         self._load_factors_from_dataframe(df, replace_existing=False)
 
     def _load_factors_from_dataframe(self, df: pd.DataFrame, replace_existing: bool = True) -> None:
-        expected_columns = ["key", "category", "source", "value", "unit", "scope"]
+        expected_columns = ["key", "category", "source", "value", "unit"]
         columns = [str(col).strip().lower() for col in df.columns]
         if not all(column in columns for column in expected_columns):
             return
@@ -177,7 +176,7 @@ class EmissionFactorForm(QGroupBox):
                 str(row.get("source", "")).strip(),
                 f"{float(row.get('value', 0) or 0):.6f}",
                 str(row.get("unit", "")).strip(),
-                str(row.get("scope", "scope_1")).strip(),
+                str(row.get("year", "") or "").strip(),
             ]
             row_index = self.factor_table.rowCount()
             self.factor_table.insertRow(row_index)
@@ -196,7 +195,7 @@ class EmissionFactorForm(QGroupBox):
             self.factor_source.text().strip(),
             f"{self.factor_value.value():.6f}",
             self.factor_unit.text().strip(),
-            self.factor_scope.currentText(),
+            self.factor_year.text().strip(),
         ]
         row = self.factor_table.rowCount()
         self.factor_table.insertRow(row)
@@ -220,13 +219,13 @@ class EmissionFactorForm(QGroupBox):
             source = self._cell_text(row, 2)
             value = float(self._cell_text(row, 3) or 0)
             unit = self._cell_text(row, 4)
-            scope = self._cell_text(row, 5)
+            year_text = self._cell_text(row, 5)
             result[key] = EmissionFactor(
                 category=category,
                 source=source,
                 value=value,
                 unit=unit,
-                scope=scope,
+                year=int(year_text) if year_text else None,
             )
         return result
 
@@ -239,7 +238,7 @@ class EmissionFactorForm(QGroupBox):
             self.factor_table.setItem(self.factor_table.rowCount() - 1, 2, QTableWidgetItem(factor.source))
             self.factor_table.setItem(self.factor_table.rowCount() - 1, 3, QTableWidgetItem(str(factor.value)))
             self.factor_table.setItem(self.factor_table.rowCount() - 1, 4, QTableWidgetItem(factor.unit))
-            self.factor_table.setItem(self.factor_table.rowCount() - 1, 5, QTableWidgetItem(factor.scope))
+            self.factor_table.setItem(self.factor_table.rowCount() - 1, 5, QTableWidgetItem(str(factor.year) if factor.year is not None else ""))
 
     def clear_inputs(self) -> None:
         self.factor_key.clear()
@@ -247,7 +246,7 @@ class EmissionFactorForm(QGroupBox):
         self.factor_source.clear()
         self.factor_value.setValue(0)
         self.factor_unit.clear()
-        self.factor_scope.setCurrentIndex(0)
+        self.factor_year.clear()
 
     def _cell_text(self, row: int, column: int) -> str:
         item = self.factor_table.item(row, column)
@@ -255,9 +254,8 @@ class EmissionFactorForm(QGroupBox):
 
 
 class CategoryActivityPanel(QWidget):
-    def __init__(self, title: str, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.category = title
         self.activity_table = QTableWidget(0, 6)
         self.activity_table.setHorizontalHeaderLabels(
             ["Name", "Type", "Amount", "Unit", "Factor key", "Scope"]
@@ -305,7 +303,6 @@ class CategoryActivityPanel(QWidget):
         button_layout.addStretch()
 
         form_layout = QVBoxLayout()
-        form_layout.addWidget(QLabel(f"<b>{self.category}</b>"))
         form_layout.addLayout(input_layout)
         form_layout.addLayout(button_layout)
         form_layout.addWidget(self.loaded_file_label)
@@ -331,13 +328,13 @@ class CategoryActivityPanel(QWidget):
             QMessageBox.warning(self, "Import error", f"Unable to import file: {error}")
             return
 
-        required_columns = {"name", "type", "amount", "unit", "factor_key", "scope"}
+        required_columns = {"name", "activity_type", "amount", "unit", "emission_factor_key", "scope"}
         columns = {str(col).strip().lower(): col for col in self.loaded_data.columns}
         if not required_columns.issubset(columns):
             QMessageBox.warning(
                 self,
                 "Invalid file",
-                "The import file must include columns: name, type, amount, unit, factor_key, scope",
+                "The import file must include columns: name, activity_type, amount, unit, emission_factor_key, scope",
             )
             self.loaded_data = None
             return
@@ -345,10 +342,10 @@ class CategoryActivityPanel(QWidget):
         for _, row in self.loaded_data.iterrows():
             values = [
                 str(row.get(columns["name"], "")).strip(),
-                str(row.get(columns["type"], "")).strip(),
+                str(row.get(columns["activity_type"], "")).strip(),
                 f"{float(row.get(columns['amount'], 0) or 0):.3f}",
                 str(row.get(columns["unit"], "")).strip(),
-                str(row.get(columns["factor_key"], "")).strip(),
+                str(row.get(columns["emission_factor_key"], "")).strip(),
                 str(row.get(columns["scope"], "scope_1")).strip(),
             ]
             row_index = self.activity_table.rowCount()
@@ -404,7 +401,6 @@ class CategoryActivityPanel(QWidget):
                     unit=unit,
                     emission_factor_key=factor_key,
                     scope=scope,
-                    category=self.category,
                 )
             )
         return results
@@ -447,44 +443,23 @@ class CategoryActivityPanel(QWidget):
 class ActivityForm(QGroupBox):
     def __init__(self, parent=None):
         super().__init__("Activities", parent)
-        self.category_tabs = QTabWidget()
-        self.general_panel = CategoryActivityPanel("General info")
-        self.transport_panel = CategoryActivityPanel("Transports and professional moving")
-        self.immobilisation_panel = CategoryActivityPanel("Immobilisation")
-
-        self.category_tabs.addTab(self.general_panel, "General info")
-        self.category_tabs.addTab(self.transport_panel, "Transports")
-        self.category_tabs.addTab(self.immobilisation_panel, "Immobilisation")
+        self.panel = CategoryActivityPanel()
 
         layout = QVBoxLayout()
-        layout.addWidget(self.category_tabs)
+        layout.addWidget(self.panel)
         self.setLayout(layout)
 
     def activities(self) -> List[Activity]:
-        return (
-            self.general_panel.activities()
-            + self.transport_panel.activities()
-            + self.immobilisation_panel.activities()
-        )
+        return self.panel.activities()
 
     def set_activities(self, activities: List[Activity]) -> None:
-        self.general_panel.set_activities([a for a in activities if a.category is None or "general" in (a.category or "").lower()])
-        self.transport_panel.set_activities([a for a in activities if "transport" in (a.category or "").lower()])
-        self.immobilisation_panel.set_activities([a for a in activities if "immobil" in (a.category or "").lower()])
+        self.panel.set_activities(activities)
 
     def add_activity_row(self, activity: Activity) -> None:
-        category = (activity.category or "general").lower()
-        if "transport" in category:
-            self.transport_panel.add_activity_row(activity)
-        elif "immobil" in category:
-            self.immobilisation_panel.add_activity_row(activity)
-        else:
-            self.general_panel.add_activity_row(activity)
+        self.panel.add_activity_row(activity)
 
     def clear_inputs(self) -> None:
-        self.general_panel.clear_inputs()
-        self.transport_panel.clear_inputs()
-        self.immobilisation_panel.clear_inputs()
+        self.panel.clear_inputs()
 
 
 class SettingsForm(QGroupBox):

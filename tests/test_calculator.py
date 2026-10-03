@@ -2,26 +2,73 @@
 
 import unittest
 
-from ghg_manager.models.activity import Activity
-from ghg_manager.models.emission_factor import EmissionFactor
+from ghg_manager.models.activity import ActivityData
+from ghg_manager.models.emission import EmissionFactor, DataQuality, Scope
 from ghg_manager.services.calculator import GHGCalculator
 
 
+class DummyFactorProvider:
+    def __init__(self, factors):
+        self._factors = factors
+
+    def get(self, key: str) -> EmissionFactor:
+        return self._factors[key]
+
+
 class CalculatorTests(unittest.TestCase):
-    def test_compute_report_counts_scope_totals(self):
-        calculator = GHGCalculator()
-        activities = [
-            Activity(name="Fuel", activity_type="energy", amount=100, unit="l", emission_factor_key="fuel", scope="scope_1"),
-            Activity(name="Electricity", activity_type="energy", amount=200, unit="kWh", emission_factor_key="electricity", scope="scope_2"),
-        ]
+    def test_compute_activity_emissions_returns_emission_result(self):
         factors = {
-            "fuel": EmissionFactor(category="Energy", source="Diesel", value=2.68, unit="kgCO2e/L", scope="scope_1"),
-            "electricity": EmissionFactor(category="Energy", source="Grid", value=0.5, unit="kgCO2e/kWh", scope="scope_2"),
+            "fuel": EmissionFactor(
+                category="Energy",
+                source="Diesel",
+                value=2.68,
+                unit="l",
+            )
         }
-        totals = calculator.compute_report(activities, factors)
-        self.assertAlmostEqual(totals["scope_1"], 268.0)
-        self.assertAlmostEqual(totals["scope_2"], 100.0)
-        self.assertAlmostEqual(totals["total_co2e"], 368.0)
+        calculator = GHGCalculator(scope=Scope.SCOPE_1, factors=DummyFactorProvider(factors))
+        activity = ActivityData(value=100.0, unit="l", label="Fuel consumption")
+
+        result = calculator.compute_activity_emissions(
+            factor_key="fuel",
+            activity=activity,
+            kwargs={
+                "category": "transport",
+                "method": "direct",
+                "data_quality": DataQuality.PRIMARY,
+            },
+        )
+
+        self.assertAlmostEqual(result.kg_co2e, 268.0)
+        self.assertEqual(result.scope, Scope.SCOPE_1)
+        self.assertEqual(result.category, "transport")
+        self.assertEqual(result.method, "direct")
+
+    def test_total_emissions_aggregates_results(self):
+        factors = {
+            "fuel": EmissionFactor(
+                category="Energy",
+                source="Diesel",
+                value=2.68,
+                unit="l",
+            )
+        }
+        calculator = GHGCalculator(scope=Scope.SCOPE_1, factors=DummyFactorProvider(factors))
+        results = [
+            calculator.compute_activity_emissions(
+                factor_key="fuel",
+                activity=ActivityData(value=100.0, unit="l", label="Fuel"),
+                kwargs={
+                    "category": "transport",
+                    "method": "direct",
+                    "data_quality": DataQuality.PRIMARY,
+                },
+            )
+        ]
+        total = calculator.total_emissions(results, scope_flag="scope_1")
+
+        self.assertAlmostEqual(total.kg_co2e, 268.0)
+        self.assertEqual(total.scope, Scope.SCOPE_1)
+        self.assertEqual(total.category, "scope_1")
 
 
 if __name__ == "__main__":

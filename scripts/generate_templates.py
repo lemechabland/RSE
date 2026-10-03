@@ -10,24 +10,21 @@ factors = pd.DataFrame([
         "category": "Transport",
         "source": "Diesel fuel",
         "value": 2.68,
-        "unit": "kgCO2e/L",
-        "scope": "scope_1",
+        "unit": "L",
     },
     {
         "key": "electricity_grid",
         "category": "Energy",
         "source": "Grid electricity",
         "value": 0.45,
-        "unit": "kgCO2e/kWh",
-        "scope": "scope_2",
+        "unit": "kWh",
     },
     {
         "key": "air_travel",
         "category": "Travel",
         "source": "Air travel",
         "value": 0.25,
-        "unit": "kgCO2e/passenger_km",
-        "scope": "scope_3",
+        "unit": "passenger_km",
     },
 ])
 

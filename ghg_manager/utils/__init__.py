@@ -4,6 +4,8 @@ from .csv_io import export_csv, import_csv
 from .excel_io import load_table, normalize_columns
 from .file_utils import ensure_folder
 from .logging import configure_logging
+from .scope_category import Scope3Category
+from .units import GreenhouseGas
 
 __all__ = [
     "configure_logging",
@@ -12,4 +14,6 @@ __all__ = [
     "load_table",
     "normalize_columns",
     "ensure_folder",
+    "Scope3Category",
+    "GreenhouseGas"
 ]

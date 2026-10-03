@@ -1,15 +1,18 @@
 {
   "base": "#1f2937",
-  "surface": "#f8fafc",
+  "surface": "#fcfcfc",
   "surface-strong": "#e2e8f0",
+  "card": "#ffffff",
   "accent": "#22c55e",
   "accent-strong": "#16a34a",
   "text": "#111827",
   "text-muted": "#475569",
-  "border": "#cbd5e1",
+  "border": "#dfe3e8",
   "danger": "#ef4444",
   "success": "#22c55e",
-  "button-radius": "8px",
+  "button-radius": "9px",
+  "card-radius": "14px",
+  "menu-radius": "10px",
   "font-family": "Segoe UI, Arial, sans-serif",
   "font-size": "13px"
 }

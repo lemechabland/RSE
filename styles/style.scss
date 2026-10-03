@@ -8,6 +8,15 @@ QMainWindow {
 QMenuBar {
   background: $surface;
   color: $text;
+  padding: 4px 8px;
+  spacing: 4px;
+  border-bottom: 1px solid $border;
+}
+
+QMenuBar::item {
+  padding: 6px 12px;
+  border-radius: $button-radius;
+  background: transparent;
 }
 
 QMenuBar::item:selected {
@@ -16,13 +25,28 @@ QMenuBar::item:selected {
 }
 
 QMenu {
-  background: $surface;
+  background: $card;
   color: $text;
+  border: 1px solid $border;
+  border-radius: $menu-radius;
+  padding: 6px;
+}
+
+QMenu::item {
+  padding: 7px 24px 7px 14px;
+  border-radius: $button-radius;
+  margin: 1px;
 }
 
 QMenu::item:selected {
   background: $accent-strong;
   color: white;
+}
+
+QMenu::separator {
+  height: 1px;
+  background: $border;
+  margin: 6px 10px;
 }
 
 QToolBar {
@@ -36,19 +60,42 @@ QStatusBar {
 }
 
 QTabWidget::pane {
-  border: 1px solid $border;
-  background: $surface-strong;
+  border: none;
+  background: $surface;
+}
+
+QTabBar::tab {
+  padding: 8px 16px;
+  border-radius: $button-radius;
 }
 
 QTabBar::tab:selected {
   background: $accent;
   color: #ffffff;
-  border-radius: 4px;
 }
 
 QTabBar::tab:!selected {
   background: $surface;
   color: $text;
+}
+
+QGroupBox {
+  background: $card;
+  border: 1px solid $border;
+  border-radius: $card-radius;
+  margin-top: 16px;
+  padding: 18px 14px 14px 14px;
+  font-weight: 600;
+}
+
+QGroupBox::title {
+  subcontrol-origin: margin;
+  subcontrol-position: top left;
+  left: 14px;
+  top: 2px;
+  padding: 0 8px;
+  color: $text;
+  background: $card;
 }
 
 QLabel,
@@ -69,19 +116,72 @@ QDoubleSpinBox {
   background: white;
   border: 1px solid $border;
   border-radius: $button-radius;
-  padding: 6px;
+  padding: 7px 9px;
+  selection-background-color: $accent;
+}
+
+QLineEdit:focus,
+QTextEdit:focus,
+QComboBox:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus {
+  border: 1px solid $accent;
 }
 
 QPushButton {
   background: $accent;
   color: white;
   border-radius: $button-radius;
-  padding: 8px 14px;
+  padding: 9px 18px;
   border: none;
+  font-weight: 600;
+  min-height: 20px;
 }
 
 QPushButton:hover {
   background: $accent-strong;
+}
+
+QPushButton:pressed {
+  background: $base;
+}
+
+QPushButton:disabled {
+  background: $surface-strong;
+  color: $text-muted;
+}
+
+QPushButton[variant="primary"] {
+  padding: 11px 22px;
+  font-size: 14px;
+}
+
+QPushButton[variant="ghost"] {
+  background: $surface-strong;
+  color: $text;
+}
+
+QPushButton[variant="ghost"]:hover {
+  background: $border;
+}
+
+QTableWidget {
+  background: $card;
+  alternate-background-color: $surface;
+  border: 1px solid $border;
+  border-radius: $button-radius;
+  gridline-color: $border;
+  selection-background-color: $accent;
+  selection-color: white;
+}
+
+QHeaderView::section {
+  background: $surface-strong;
+  color: $text;
+  padding: 6px 8px;
+  border: none;
+  border-bottom: 1px solid $border;
+  font-weight: 600;
 }
 
 QLabel#preview_label {

@@ -1,17 +1,36 @@
 """Custom widgets for data entry and summary display."""
 
-from PySide6.QtWidgets import QVBoxLayout, QLabel, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QGridLayout, QGroupBox, QSizePolicy, QVBoxLayout, QLabel, QWidget
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from .charts import build_scope_chart
 
 
-from PySide6.QtWidgets import QGridLayout, QGroupBox, QVBoxLayout, QLabel, QWidget
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+class BannerLabel(QLabel):
+    """A hero image that scales with its container without cropping or
+    distorting the source pixmap (only its width/height ratio changes)."""
 
-from .charts import build_scope_chart
+    def __init__(self, pixmap: QPixmap, max_height: int = 260, parent=None):
+        super().__init__(parent)
+        self._source = pixmap
+        self._max_height = max_height
+        self.setAlignment(Qt.AlignCenter)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def resizeEvent(self, event) -> None:
+        if not self._source.isNull() and self.width() > 0:
+            scaled = self._source.scaledToWidth(self.width(), Qt.SmoothTransformation)
+            if scaled.height() > self._max_height:
+                scaled = self._source.scaledToHeight(self._max_height, Qt.SmoothTransformation)
+            # Fix the label's own height to the pixmap's so the layout can
+            # never allot it less space than what it is about to paint,
+            # which would otherwise silently clip the image.
+            self.setFixedHeight(scaled.height())
+            self.setPixmap(scaled)
+        super().resizeEvent(event)
 
 
 class SummaryPanel(QGroupBox):
@@ -61,10 +80,6 @@ class SummaryPanel(QGroupBox):
         grid.setHorizontalSpacing(30)
 
         self.setLayout(grid)
-        self.setStyleSheet(
-            "QGroupBox { background: #fdfdfd; border: 1px solid #dcdcdc; border-radius: 8px; margin-top: 10px; }"
-            "QGroupBox:title { subcontrol-origin: margin; left: 10px; padding: 5px; }"
-        )
 
     def update_summary(self, totals: dict) -> None:
         self.total_label.setText(f"{totals.get('total_co2e', 0):.3f}")
